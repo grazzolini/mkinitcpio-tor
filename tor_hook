@@ -1,0 +1,13 @@
+#!/usr/bin/ash
+
+run_hook ()
+{
+  echo "Starting tor"
+  /usr/bin/tor --runasdaemon 1 -f /etc/tor/torrc
+
+}
+
+run_cleanuphook ()
+{
+  killall tor
+}

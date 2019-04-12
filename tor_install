@@ -1,0 +1,60 @@
+#!/bin/bash
+
+build ()
+{
+  #
+  # Begin real processing
+  #
+
+  # Are we even needed?
+  if [ ! -x /usr/bin/tor ]; then
+      echo "Tor is not installed; exit"
+      return 0
+  fi
+  
+  if [ ! -d /etc/tor -o ! -d /var/lib/tor ]; then
+      echo "Tor is not configured yet or is using a different directory for configuration; exit"
+      return 0
+  fi
+  
+  # if TMPDIR is set leave it alone otherwise set
+  [[ -z $TMPDIR ]] && TMPDIR='/tmp/mkinitcpio-tor'
+
+  # check if TMPDIR exsists if not make it
+  [[ -d $TMPDIR ]] || mkdir -p $TMPDIR
+  
+  #systemd enabled
+  declare -F add_systemd_unit > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      add_systemd_unit "tor.service"
+      systemctl --root "$BUILDROOT" enable tor.service
+  #base enabled
+  else
+      add_binary "/usr/bin/killall"
+      add_binary "/usr/bin/tor"
+      shopt -s dotglob
+      add_full_dir "/etc/tor"
+      add_full_dir "/var/lib/tor"
+      shopt -u dotglob
+      
+      #create log dir
+      add_dir "/var/log/tor"
+      
+      #fix permissions (todo: add this to mkinitcpio)
+      chmod 0700 "$BUILDROOT/var/lib/tor"
+      find "$BUILDROOT/var/lib/tor" -type f -exec chmod 0600 {} \;
+      find "$BUILDROOT/var/lib/tor" -type d -exec chmod 0700 {} \;
+      
+      add_runscript
+  fi
+  
+}
+
+help ()
+{
+    cat<<HELPEOF
+This hook will add tor binary and configuration to the initramfs. It is meant
+for situations where the server does not have direct connectivity or the user
+wants to conceal the fact a server is using remote unlocking.
+HELPEOF
+}
